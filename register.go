@@ -48,6 +48,13 @@ type Config struct {
 	RootAttestationCertPool *x509.CertPool
 }
 
+// fixCerts contains the sha256 sums of Yubikey Attestation Certificates with
+// known corruption.
+var fixCerts = map[string]bool{
+	"349bca1031f8c82c4ceca38b9cebf1a69df9fb3b94eed99eb3fb9aa3822d26e8": true,
+	// TODO: add remaining certs.
+}
+
 // Register validates a RegisterResponse message to enrol a new token.
 // An error is returned if any part of the response fails to validate.
 // The returned Registration should be stored by the caller.
@@ -135,7 +142,11 @@ func parseRegistration(buf []byte) (*Registration, []byte, error) {
 	// Clear byte corrupted by an older version of openssl so Attestation
 	// Certificate signature verification works correctly.
 	// See also: https://github.com/tstranex/u2f/issues/8#issuecomment-366842256
-	buf[len(buf)-257] = 0
+	s := sha256.Sum256(buf)
+	h := hex.EncodeToString(s[:])
+	if _, found := fixCerts[h]; found {
+		buf[len(buf)-257] = 0
+	}
 
 	cert, err := x509.ParseCertificate(buf)
 	if err != nil {
