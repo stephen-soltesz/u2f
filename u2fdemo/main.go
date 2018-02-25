@@ -6,12 +6,15 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/tstranex/u2f"
+	"github.com/kr/pretty"
+	"github.com/stephen-soltesz/u2f"
 )
 
 const appID = "https://localhost:3483"
@@ -26,7 +29,7 @@ var registrations []u2f.Registration
 var counter uint32
 
 func registerRequest(w http.ResponseWriter, r *http.Request) {
-	c, err := u2f.NewChallenge(appID, trustedFacets)
+	c, err := u2f.NewChallenge(appID, trustedFacets, "")
 	if err != nil {
 		log.Printf("u2f.NewChallenge error: %v", err)
 		http.Error(w, "error", http.StatusInternalServerError)
@@ -35,8 +38,12 @@ func registerRequest(w http.ResponseWriter, r *http.Request) {
 	challenge = c
 	req := u2f.NewWebRegisterRequest(c, registrations)
 
-	log.Printf("registerRequest: %+v", req)
-	json.NewEncoder(w).Encode(req)
+	log.Printf("Register request:")
+	var data bytes.Buffer
+	json.NewEncoder(&data).Encode(req)
+	fmt.Println(data.String())
+	fmt.Println()
+	w.Write([]byte(data.String()))
 }
 
 func registerResponse(w http.ResponseWriter, r *http.Request) {
@@ -46,11 +53,16 @@ func registerResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pretty.Println("Register response:")
+	pretty.Println(regResp)
+	pretty.Println()
+
 	if challenge == nil {
 		http.Error(w, "challenge not found", http.StatusBadRequest)
 		return
 	}
 
+	// cfg := &u2f.Config{SkipAttestationVerify: true}
 	reg, err := u2f.Register(regResp, *challenge, nil)
 	if err != nil {
 		log.Printf("u2f.Register error: %v", err)
@@ -61,7 +73,7 @@ func registerResponse(w http.ResponseWriter, r *http.Request) {
 	registrations = append(registrations, *reg)
 	counter = 0
 
-	log.Printf("Registration success: %+v", reg)
+	pretty.Println("Register success")
 	w.Write([]byte("success"))
 }
 
@@ -71,7 +83,10 @@ func signRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := u2f.NewChallenge(appID, trustedFacets)
+	c, err := u2f.NewChallenge(
+		appID,
+		trustedFacets,
+		`stephen.soltesz@gmail.com`)
 	if err != nil {
 		log.Printf("u2f.NewChallenge error: %v", err)
 		http.Error(w, "error", http.StatusInternalServerError)
@@ -81,8 +96,14 @@ func signRequest(w http.ResponseWriter, r *http.Request) {
 
 	req := c.SignRequest(registrations)
 
-	log.Printf("Sign request: %+v", req)
-	json.NewEncoder(w).Encode(req)
+	log.Println("Sign request:")
+	pretty.Println(req)
+	fmt.Println()
+	var data bytes.Buffer
+	json.NewEncoder(&data).Encode(req)
+	fmt.Println(data.String())
+	fmt.Println()
+	w.Write([]byte(data.String()))
 }
 
 func signResponse(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +113,9 @@ func signResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("signResponse: %+v", signResp)
+	log.Println("Sign response:")
+	pretty.Println(signResp)
+	pretty.Println()
 
 	if challenge == nil {
 		http.Error(w, "challenge missing", http.StatusBadRequest)
@@ -143,7 +166,7 @@ const indexHTML = `
 
   function serverError(data) {
     console.log(data);
-    alert('Server error code ' + data.status + ': ' + data.responseText);
+    console.log('Server error code ' + data.status + ': ' + data.responseText);
   }
 
   function checkError(resp) {
@@ -163,7 +186,7 @@ const indexHTML = `
       msg += ': ' + resp.errorMessage;
     }
     console.log(msg);
-    alert(msg);
+    console.log(msg);
     return true;
   }
 
@@ -173,7 +196,7 @@ const indexHTML = `
       return;
     }
     $.post('/registerResponse', JSON.stringify(resp)).success(function() {
-      alert('Success');
+      console.log('Success');
     }).fail(serverError);
   }
 
@@ -190,7 +213,7 @@ const indexHTML = `
       return;
     }
     $.post('/signResponse', JSON.stringify(resp)).success(function() {
-      alert('Success');
+      console.log('Success');
     }).fail(serverError);
   }
 
