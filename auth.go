@@ -7,11 +7,15 @@ package u2f
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/hex"
 	"errors"
 	"math/big"
 	"time"
+
+	"github.com/kr/pretty"
 )
 
 // SignRequest creates a request to initiate an authentication.
@@ -64,13 +68,17 @@ func (reg *Registration) Authenticate(resp SignResponse, c Challenge, counter ui
 		return 0, ErrCounterTooLow
 	}
 
-	if err := verifyClientData(clientData, c); err != nil {
+	_, err = verifyClientData(clientData, c)
+	if err != nil {
 		return 0, err
 	}
 
+	pretty.Println("Authenticate:")
 	if err := verifyAuthSignature(*ar, &reg.PubKey, c.AppID, clientData); err != nil {
 		return 0, err
 	}
+	pretty.Println("u2f Signature    :", hex.EncodeToString(sigData))
+	pretty.Println()
 
 	if !ar.UserPresenceVerified {
 		return 0, errors.New("u2f: user was not present")
@@ -119,14 +127,30 @@ func parseSignResponse(sd []byte) (*authResp, error) {
 }
 
 func verifyAuthSignature(ar authResp, pubKey *ecdsa.PublicKey, appID string, clientData []byte) error {
-	appParam := sha256.Sum256([]byte(appID))
-	challenge := sha256.Sum256(clientData)
+	// sha256 checksum of orginal app Id,
+	appSum := sha256.Sum256([]byte(appID))
+	// and client data (constructed by the js api from the original WebSignRequest challenge).
+	cdSum := sha256.Sum256(clientData)
 
+	// Reconstruct the data that was signed by the u2f device:
+	// https://fidoalliance.org/specs/fido-u2f-v1.1-id-20160915/fido-u2f-raw-message-formats-v1.1-id-20160915.html#authentication-response-message-success
 	var buf []byte
-	buf = append(buf, appParam[:]...)
+	// appid checksum.
+	buf = append(buf, appSum[:]...)
+	// user presence byte and 4 byte counter.
 	buf = append(buf, ar.raw...)
-	buf = append(buf, challenge[:]...)
+	// client data checksum.
+	buf = append(buf, cdSum[:]...)
 	hash := sha256.Sum256(buf)
+
+	pk := elliptic.Marshal(pubKey.Curve, pubKey.X, pubKey.Y)
+	pretty.Println("appId string     :", appID)
+	pretty.Println("ClientData string:", string(clientData))
+	pretty.Println("Public key       :", hex.EncodeToString(pk))
+	pretty.Println("appId SHA256     :", hex.EncodeToString(appSum[:]))
+	pretty.Println("User presence    :", "01")
+	pretty.Println("Counter          :", hex.EncodeToString(ar.raw[1:]))
+	pretty.Println("ClientData SHA256:", hex.EncodeToString(cdSum[:]))
 
 	if !ecdsa.Verify(pubKey, hash[:], ar.sig.R, ar.sig.S) {
 		return errors.New("u2f: invalid signature")
