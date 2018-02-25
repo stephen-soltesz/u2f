@@ -18,7 +18,7 @@ func TestVerifyClientDataWithoutChannelId(t *testing.T) {
 		TrustedFacets: []string{"http://localhost:3483"},
 	}
 
-	err := verifyClientData([]byte(clientData), c)
+	_, err := verifyClientData([]byte(clientData), c)
 	if err != nil {
 		t.Error(err)
 	}
@@ -33,7 +33,7 @@ func TestVerifyClientDataWithChannelId(t *testing.T) {
 		TrustedFacets: []string{"http://example.com"},
 	}
 
-	err := verifyClientData([]byte(clientData), c)
+	_, err := verifyClientData([]byte(clientData), c)
 	if err != nil {
 		t.Error(err)
 	}
