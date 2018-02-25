@@ -46,6 +46,7 @@ https://fidoalliance.org/specifications/download
 package u2f
 
 import (
+	// "crypto/rand"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -80,28 +81,30 @@ type Challenge struct {
 }
 
 // NewChallenge generates a challenge for the given application.
-func NewChallenge(appID string, trustedFacets []string) (*Challenge, error) {
-	challenge := make([]byte, 32)
-	n, err := rand.Read(challenge)
-	if err != nil {
-		return nil, err
+func NewChallenge(appID string, trustedFacets []string, message string) (*Challenge, error) {
+	if message == "" {
+		b := make([]byte, 32)
+		n, err := rand.Read(b)
+		if err != nil {
+			return nil, err
+		}
+		if n != 32 {
+			return nil, errors.New("u2f: unable to generate random bytes")
+		}
+		message = string(b)
 	}
-	if n != 32 {
-		return nil, errors.New("u2f: unable to generate random bytes")
-	}
-
 	var c Challenge
-	c.Challenge = challenge
+	c.Challenge = []byte(message)
 	c.Timestamp = time.Now()
 	c.AppID = appID
 	c.TrustedFacets = trustedFacets
 	return &c, nil
 }
 
-func verifyClientData(clientData []byte, challenge Challenge) error {
+func verifyClientData(clientData []byte, challenge Challenge) (*ClientData, error) {
 	var cd ClientData
 	if err := json.Unmarshal(clientData, &cd); err != nil {
-		return err
+		return nil, err
 	}
 
 	foundFacetID := false
@@ -112,14 +115,14 @@ func verifyClientData(clientData []byte, challenge Challenge) error {
 		}
 	}
 	if !foundFacetID {
-		return errors.New("u2f: untrusted facet id")
+		return nil, errors.New("u2f: untrusted facet id")
 	}
 
 	c := encodeBase64(challenge.Challenge)
 	if len(c) != len(cd.Challenge) ||
 		subtle.ConstantTimeCompare([]byte(c), []byte(cd.Challenge)) != 1 {
-		return errors.New("u2f: challenge does not match")
+		return nil, errors.New("u2f: challenge does not match")
 	}
 
-	return nil
+	return &cd, nil
 }
