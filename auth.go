@@ -146,11 +146,11 @@ func verifyAuthSignature(ar authResp, pubKey *ecdsa.PublicKey, appID string, cli
 	pk := elliptic.Marshal(pubKey.Curve, pubKey.X, pubKey.Y)
 	pretty.Println("appId string     :", appID)
 	pretty.Println("ClientData string:", string(clientData))
-	pretty.Println("Public key       :", hex.EncodeToString(pk))
 	pretty.Println("appId SHA256     :", hex.EncodeToString(appSum[:]))
 	pretty.Println("User presence    :", "01")
 	pretty.Println("Counter          :", hex.EncodeToString(ar.raw[1:]))
 	pretty.Println("ClientData SHA256:", hex.EncodeToString(cdSum[:]))
+	pretty.Println("Public key       :", hex.EncodeToString(pk))
 
 	if !ecdsa.Verify(pubKey, hash[:], ar.sig.R, ar.sig.S) {
 		return errors.New("u2f: invalid signature")
