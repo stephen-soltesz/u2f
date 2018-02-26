@@ -83,10 +83,14 @@ func signRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := u2f.NewChallenge(
-		appID,
-		trustedFacets,
-		`stephen.soltesz@gmail.com`)
+	r.ParseForm()
+	// TODO: report an error if msg is empty.
+	// An empty message will sign 32 random bytes.
+	msg := r.Form.Get("message")
+	fmt.Printf("Raw query  : %q\n", r.URL.RawQuery)
+	fmt.Printf("Raw message: %q\n", msg)
+
+	c, err := u2f.NewChallenge(appID, trustedFacets, msg)
 	if err != nil {
 		log.Printf("u2f.NewChallenge error: %v", err)
 		http.Error(w, "error", http.StatusInternalServerError)
@@ -155,12 +159,14 @@ const indexHTML = `
   <body>
     <h1>FIDO U2F Go Library Demo</h1>
 
+    <p>NOTE: Open Chrome Developer Tools to see debug console logs.</p>
+
     <ul>
       <li><a href="javascript:register();">Register token</a></li>
-      <li><a href="javascript:sign();">Authenticate</a></li>
+      <li><a href="javascript:sign();">Sign message</a><br/>
+        <textarea rows="4" cols="50" id="message">Message to sign.</textarea>
+      </li>
     </ul>
-
-    <p>Open Chrome Developer Tools to see debug console logs.</p>
 
     <script>
 
@@ -204,6 +210,7 @@ const indexHTML = `
     $.getJSON('/registerRequest').success(function(req) {
       console.log(req);
       u2f.register(req.appId, req.registerRequests, req.registeredKeys, u2fRegistered, 30);
+      console.log('\nTouch key to register!\n');
     }).fail(serverError);
   }
 
@@ -218,8 +225,13 @@ const indexHTML = `
   }
 
   function sign() {
-    $.getJSON('/signRequest').success(function(req) {
+    // Find the message form in the DOM by id.
+    const form = document.getElementById('message');
+
+    // Get the form data and encode it to preserve spaces, new lines, and special characters.
+    $.getJSON('/signRequest?message=' + encodeURIComponent(form.value)).success(function(req) {
       console.log(req);
+      console.log('\nTouch key to sign!\n');
       u2f.sign(req.appId, req.challenge, req.registeredKeys, u2fSigned, 30);
     }).fail(serverError);
   }
