@@ -192,7 +192,6 @@ const indexHTML = `
       msg += ': ' + resp.errorMessage;
     }
     console.log(msg);
-    console.log(msg);
     return true;
   }
 

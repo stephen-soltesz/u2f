@@ -46,7 +46,6 @@ https://fidoalliance.org/specifications/download
 package u2f
 
 import (
-	// "crypto/rand"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
