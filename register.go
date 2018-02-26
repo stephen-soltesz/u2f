@@ -81,7 +81,7 @@ func Register(resp RegisterResponse, c Challenge, config *Config) (*Registration
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Signature length: ", len(sig))
+	fmt.Println("Signature length : ", len(sig))
 
 	if _, err := verifyClientData(clientData, c); err != nil {
 		return nil, err
