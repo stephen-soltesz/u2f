@@ -3,7 +3,7 @@
 This Go package implements the parts of the FIDO U2F specification required on
 the server side of an application.
 
-[![Build Status](https://travis-ci.org/tstranex/u2f.svg?branch=master)](https://travis-ci.org/tstranex/u2f)
+[![Build Status](https://travis-ci.org/stephen-soltesz/u2f.svg?branch=master)](https://travis-ci.org/stephen-soltesz/u2f)
 
 ## Features
 
@@ -13,7 +13,7 @@ the server side of an application.
 
 ## Usage
 
-Please visit http://godoc.org/github.com/tstranex/u2f for the full
+Please visit http://godoc.org/github.com/stephen-soltesz/u2f for the full
 documentation.
 
 ### How to enrol a new token
@@ -59,7 +59,7 @@ if err != nil {
 ## Installation
 
 ```
-$ go get github.com/tstranex/u2f
+$ go get github.com/stephen-soltesz/u2f
 ```
 
 ## Example
@@ -67,7 +67,7 @@ $ go get github.com/tstranex/u2f
 See u2fdemo/main.go for an full example server. To run it:
 
 ```
-$ go install github.com/tstranex/u2f/u2fdemo
+$ go install github.com/stephen-soltesz/u2f/u2fdemo
 $ ./bin/u2fdemo
 ```
 
