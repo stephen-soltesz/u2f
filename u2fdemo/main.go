@@ -164,7 +164,7 @@ const indexHTML = `
     <ul>
       <li><a href="javascript:register();">Register token</a></li>
       <li><a href="javascript:sign();">Sign message</a><br/>
-        <textarea rows="4" cols="50" id="message">Message to sign.</textarea>
+        <textarea style="font-family: monospace" rows="15" cols="70" id="message">Message to sign.</textarea>
       </li>
     </ul>
 
