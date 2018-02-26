@@ -59,7 +59,8 @@ if err != nil {
 ## Installation
 
 ```
-$ go get github.com/stephen-soltesz/u2f
+$ export GOPATH=$HOME
+$ go get github.com/stephen-soltesz/u2f/u2fdemo
 ```
 
 ## Example
