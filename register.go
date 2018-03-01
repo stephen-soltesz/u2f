@@ -52,6 +52,7 @@ type Config struct {
 // known corruption.
 var fixCerts = map[string]bool{
 	"349bca1031f8c82c4ceca38b9cebf1a69df9fb3b94eed99eb3fb9aa3822d26e8": true,
+	"ca993121846c464d666096d35f13bf44c1b05af205f9b4a1e00cf6cc10c5e511": true,
 	// TODO: add remaining certs.
 }
 
@@ -147,6 +148,7 @@ func parseRegistration(buf []byte) (*Registration, []byte, error) {
 	if _, found := fixCerts[h]; found {
 		buf[len(buf)-257] = 0
 	}
+	fmt.Println("cert hash", h)
 
 	cert, err := x509.ParseCertificate(buf)
 	if err != nil {
