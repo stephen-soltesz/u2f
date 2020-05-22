@@ -74,7 +74,15 @@ func registerResponse(w http.ResponseWriter, r *http.Request) {
 	counter = 0
 
 	pretty.Println("Register success")
-	w.Write([]byte("success"))
+	result := map[string]string{
+		"status": "success",
+	}
+	b, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		w.Write([]byte(`{"status":"error"}`))
+		return
+	}
+	w.Write(b)
 }
 
 func signRequest(w http.ResponseWriter, r *http.Request) {
@@ -110,10 +118,14 @@ func signRequest(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(data.String()))
 }
 
+func errJSON(message string) string {
+	return fmt.Sprintf(`{"status":"error","message:"%s"}`, message)
+}
+
 func signResponse(w http.ResponseWriter, r *http.Request) {
 	var signResp u2f.SignResponse
 	if err := json.NewDecoder(r.Body).Decode(&signResp); err != nil {
-		http.Error(w, "invalid response: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, errJSON("invalid response: "+err.Error()), http.StatusBadRequest)
 		return
 	}
 
@@ -122,27 +134,34 @@ func signResponse(w http.ResponseWriter, r *http.Request) {
 	pretty.Println()
 
 	if challenge == nil {
-		http.Error(w, "challenge missing", http.StatusBadRequest)
+		http.Error(w, errJSON("challenge missing"), http.StatusBadRequest)
 		return
 	}
 	if registrations == nil {
-		http.Error(w, "registration missing", http.StatusBadRequest)
+		http.Error(w, errJSON("registration missing"), http.StatusBadRequest)
 		return
 	}
 
 	var err error
 	for _, reg := range registrations {
-		newCounter, authErr := reg.Authenticate(signResp, *challenge, counter)
+		results := map[string]string{}
+		newCounter, authErr := reg.Authenticate(signResp, *challenge, counter, results)
 		if authErr == nil {
 			log.Printf("newCounter: %d", newCounter)
 			counter = newCounter
-			w.Write([]byte("success"))
+			results["status"] = "success"
+			b, err := json.MarshalIndent(results, "", "  ")
+			if err != nil {
+				http.Error(w, errJSON(err.Error()), http.StatusInternalServerError)
+				return
+			}
+			w.Write(b)
 			return
 		}
 	}
 
 	log.Printf("VerifySignResponse error: %v", err)
-	http.Error(w, "error verifying response", http.StatusInternalServerError)
+	http.Error(w, errJSON(err.Error()), http.StatusInternalServerError)
 }
 
 const indexHTML = `
@@ -166,7 +185,10 @@ const indexHTML = `
       <li><a href="javascript:sign();">Sign message</a><br/>
         <textarea style="font-family: monospace" rows="15" cols="70" id="message">Message to sign.</textarea>
       </li>
-    </ul>
+		</ul>
+		
+		<pre id="result">
+		</pre>
 
     <script>
 
@@ -200,8 +222,10 @@ const indexHTML = `
     if (checkError(resp)) {
       return;
     }
-    $.post('/registerResponse', JSON.stringify(resp)).success(function() {
+    $.post('/registerResponse', JSON.stringify(resp)).success(function(data) {
       console.log('Success');
+			result = JSON.parse(data);
+			console.log(result);
     }).fail(serverError);
   }
 
@@ -218,8 +242,11 @@ const indexHTML = `
     if (checkError(resp)) {
       return;
     }
-    $.post('/signResponse', JSON.stringify(resp)).success(function() {
+    $.post('/signResponse', JSON.stringify(resp)).success(function(data) {
       console.log('Success');
+			result = JSON.parse(data);
+			console.log(result);
+			$('#result').text(JSON.stringify(result, null, 2));
     }).fail(serverError);
   }
 
@@ -241,12 +268,33 @@ const indexHTML = `
 </html>
 `
 
+/*
+func jsHandler(w http.ResponseWriter, r *http.Request) {
+	script, err := ioutil.ReadFile("u2fsign.js")
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(script)
+}
+*/
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+		index, err := ioutil.ReadFile("index.html")
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "error", http.StatusInternalServerError)
+			return
+		}
+		w.Write(index)
+	*/
 	w.Write([]byte(indexHTML))
 }
 
 func main() {
 	http.HandleFunc("/", indexHandler)
+	// http.HandleFunc("/js/u2fsign.js", jsHandler)
 	http.HandleFunc("/registerRequest", registerRequest)
 	http.HandleFunc("/registerResponse", registerResponse)
 	http.HandleFunc("/signRequest", signRequest)

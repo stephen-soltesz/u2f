@@ -41,7 +41,7 @@ var ErrCounterTooLow = errors.New("u2f: counter too low")
 // The counter should be the counter associated with appropriate device
 // (i.e. resp.KeyHandle).
 // The latest counter value is returned, which the caller should store.
-func (reg *Registration) Authenticate(resp SignResponse, c Challenge, counter uint32) (newCounter uint32, err error) {
+func (reg *Registration) Authenticate(resp SignResponse, c Challenge, counter uint32, results map[string]string) (newCounter uint32, err error) {
 	if time.Now().Sub(c.Timestamp) > timeout {
 		return 0, errors.New("u2f: challenge has expired")
 	}
@@ -74,10 +74,11 @@ func (reg *Registration) Authenticate(resp SignResponse, c Challenge, counter ui
 	}
 
 	pretty.Println("Authenticate:")
-	if err := verifyAuthSignature(*ar, &reg.PubKey, c.AppID, clientData); err != nil {
+	results["signature"] = hex.EncodeToString(sigData)
+	if err := verifyAuthSignature(*ar, &reg.PubKey, c.AppID, clientData, results); err != nil {
 		return 0, err
 	}
-	pretty.Println("u2f Signature    :", hex.EncodeToString(sigData))
+	pretty.Println("u2f Signature    :", results["signature"])
 	pretty.Println()
 
 	if !ar.UserPresenceVerified {
@@ -126,7 +127,7 @@ func parseSignResponse(sd []byte) (*authResp, error) {
 	return &ar, nil
 }
 
-func verifyAuthSignature(ar authResp, pubKey *ecdsa.PublicKey, appID string, clientData []byte) error {
+func verifyAuthSignature(ar authResp, pubKey *ecdsa.PublicKey, appID string, clientData []byte, results map[string]string) error {
 	// sha256 checksum of orginal app Id,
 	appSum := sha256.Sum256([]byte(appID))
 	// and client data (constructed by the js api from the original WebSignRequest challenge).
@@ -144,6 +145,14 @@ func verifyAuthSignature(ar authResp, pubKey *ecdsa.PublicKey, appID string, cli
 	hash := sha256.Sum256(buf)
 
 	pk := elliptic.Marshal(pubKey.Curve, pubKey.X, pubKey.Y)
+	results["app_id"] = appID
+	results["client_data"] = string(clientData)
+	results["api_id_sha256"] = hex.EncodeToString(appSum[:])
+	results["client_data_sha256"] = hex.EncodeToString(cdSum[:])
+	results["user_present"] = "01"
+	results["counter"] = hex.EncodeToString(ar.raw[1:])
+	results["public_key"] = hex.EncodeToString(pk)
+
 	pretty.Println("appId string     :", appID)
 	pretty.Println("ClientData string:", string(clientData))
 	pretty.Println("appId SHA256     :", hex.EncodeToString(appSum[:]))
