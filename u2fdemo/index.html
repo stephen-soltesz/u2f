@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+    <!-- The original u2f-api.js code can be found here:
+    https://github.com/google/u2f-ref-code/blob/master/u2f-gae-demo/war/js/u2f-api.js -->
+    <script type="text/javascript" src="https://demo.yubico.com/js/u2f-api.js"></script>
+    <script type="text/javascript" src="/js/u2fsign.js"></script>
+  </head>
+
+  <body>
+    <h1>FIDO U2F Go Library Demo</h1>
+
+    <p>NOTE: Open Chrome Developer Tools to see debug console logs.</p>
+
+    <ul>
+      <li><a href="javascript:register();">Register token</a></li>
+      <li><a href="javascript:sign();">Sign message</a><br/>
+        <textarea style="font-family: monospace" rows="15" cols="70" id="message">Message to sign.</textarea>
+      </li>
+    </ul>
+
+	<pre id="result"></pre>
+
+  </body>
+</html>
